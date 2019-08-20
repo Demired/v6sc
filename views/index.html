@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+	<html lang="cn">
+			<head>
+			<meta charset="utf-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1.0, user-scalable=0">
+			<meta name="description" content="">
+			<meta name="author" content="">
+			<title>IPv6网站测试</title>
+			<style>
+				.mt{
+					margin-top:.5rem;
+				}
+				.ipv6-address{
+					text-align: right;
+					padding-left: 58px;
+					padding-top: 8px;
+					word-break:break-all;
+				}
+				.navbar-toggler {
+					border: none;
+				}
+				.table td, .table th {
+					padding: .45rem!important;
+					vertical-align: top;
+					border-top: 1px solid #dee2e6;
+				}
+			</style>
+			<link rel="stylesheet" href="https://cdn.bootcss.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+			<script src="https://cdn.bootcss.com/jquery/2.1.1/jquery.min.js"></script>
+
+		</head>
+		<body>
+			<header>
+				<div class="navbar navbar-dark bg-dark box-shadow">
+					<div class="container d-flex justify-content-between" style="max-width:1200px">
+						<a href="/index" class="navbar-brand d-flex align-items-center">
+							<img src="https://cdn.ipip.net/loveapp/ipip/www_v2/theme/css/img/Logo_IPIP.png" alt="" width="80">
+						</a>
+						<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#add" data-whatever="@getbootstrap">添加一个站点</button>
+					</div>
+				</div>
+			</header>
+			<div>
+				<section class="jumbotron text-center">
+					<div class="container">
+						<h2 class="jumbotron-heading" style="margin-bottom: 30px;">IPv6 支持性检测</h2>
+						<p class="lead text-muted">IPv6势不可挡，本网站主要测试是否支持IPv6，为互联网从业者提供一个比例参考。</p>
+						<p class="lead text-muted">本站共收录了{{.siteStat.count}}个域名，其中能用IPv6访问的有{{.siteStat.supportV6Count}}个域名，约占{{.siteStat.supportV6Scale}}%。我们还在不断追加域名。</p>
+						<form class="form-prompt" onkeydown="if(event.keyCode==13) {return false;}">
+							<input class="form-control" style="width: 280px;margin: 10px auto; text-align: center;" name="search" type="search" placeholder="输入域名" aria-label="Search">
+							<button class="btn btn-outline-success my-2 my-sm-0" id="search" type="button">搜索</button>
+						</form>
+						<script>
+							var tj = function(){
+								var domain = $("input[name='search']").val()
+								if(domain !== ""){
+									var url = "/searchsite?domain="+domain
+									$.get(url,function(d){
+										$("#search-dom").show()
+										$("#search-res").html("")
+										$("#search-res").append(d)
+										$('[data-toggle="tooltip"]').tooltip();   
+									})
+								}
+							}
+							$("input[name='search']").keydown(function(event){
+								if(event.keyCode ==13){
+									tj()
+								}
+							});
+							$("#search").click(function(){
+								tj();
+							});
+						</script>
+					</div>
+				</section>
+			</div>
+			<div class="modal fade" id="add" tabindex="-1" role="dialog" aria-labelledby="addLabel" aria-hidden="true">
+				<div class="modal-dialog" role="document">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title" id="addLabel">添加网站</h5>
+							<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+							</button>
+						</div>
+						<div class="modal-body">
+							<div class="alert alert-success" style="display:none" id="form-prompt" role="alert">
+								<h4 class="alert-heading">添加成功！</h4>
+								<p>你可以再最近添加中找到你刚添加的域名，他会在1分钟之内更新ipv6的支持信息！</p>
+								<hr>
+								<p class="mb-0">弹窗马上关闭。。。</p>
+							</div>
+							<form id="address-desc">
+								<div class="form-group">
+									<label for="domain" class="col-form-label">地址:</label>
+								</div>
+								<div class="input-group mb-3">
+									<input type="text" class="form-control" name="domain" id="domain" placeholder="www.qq.com">
+								</div>
+								<div class="alert alert-danger" style="display:none" id="domain-prompt" role="alert"></div>
+								<div class="form-group">
+									<label for="desc" class="col-form-label">描述:</label>
+									<input type="text" class="form-control" maxlength="10" name="desc" id="desc">
+								</div>
+								<div class="alert alert-danger" style="display:none" id="desc-prompt" role="alert"></div>
+							</form>
+						</div>
+						<div class="modal-footer">
+							<button type="button" id="addsite" class="btn btn-primary" disabled>添加</button>
+							<button type="button" id="refresh" style="display:none;" class="btn btn-primary">刷新</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<script>
+				$("#domain").blur(function(){
+					$("#domain-prompt").html("");
+					$("#domain-prompt").hide();
+					var domain = $("#domain").val()
+					if(check_domain(domain)){
+						//请求服务器
+						var param = []
+						param.domain = $("#domain").val()
+						param.desc = $("#desc").val()
+						var url = "/testsite?domain="+param.domain
+						$.get(url,function(d){
+							if(d.ret == "v"){
+								$('#addsite').removeAttr("disabled");
+								$("#domain-prompt").hide();
+							}else{
+								$("#domain-prompt").show();
+								$("#domain-prompt").html(d.msg);
+								$("#addsite").attr("disabled",true);
+							}
+						},"json")
+					}else{
+						$("#domain-prompt").show();
+						$("#domain-prompt").html("域名不合法");
+						$("#addsite").attr("disabled",true);
+					}
+				})
+				var check_domain = function(domain){
+					if (domain.split(".").length > 1){
+						return true
+					}
+					return false
+				}
+				$("#addsite").click(function(){
+					var param = [];
+					param.domain = $("#domain").val()
+					param.desc = $("#desc").val()
+					var url = "/addsite?domain="+param.domain+"&desc="+param.desc
+					$.get(url,function(d){
+						if(d.ret == "v"){
+							$("#address-desc").hide()
+							$("#form-prompt").show()
+							$("#addsite").hide()
+							$("#refresh").show()
+							setTimeout(function(){
+								$("#add").modal('hide')
+								$("#address-desc").show()
+								$("#form-prompt").hide()
+								$("#domain").val("")
+								$("#desc").val("")
+								window.location.reload()
+							},2000)
+						}else{
+							$("#desc-prompt").show();
+							$("#desc-prompt").html(d.msg);
+						}
+					},"json")
+				})
+				$("#refresh").click(function(){
+					window.location.reload()
+				})
+			</script>
+			<div class="container" id="search-dom" style="max-width:2000px;display: none;">
+				<h4>搜索结果</h4>
+				<br>
+				<div>
+					<table class="table table-striped">
+						<thead id="searchHead">
+							<tr>
+								<th scope="col">域名</th>
+								<th scope="col">描述</th>
+								<th scope="col">IPv4地址</th>
+								<th scope="col">V4 http</th>
+								<th scope="col">V4 https</th>
+								<th scope="col">V4 h2</th>
+								<th scope="col">IPv6地址</th>
+								<th scope="col">V6 http</th>
+								<th scope="col">V6 https</th>
+								<th scope="col">V6 h2</th>
+								<th scope="col">添加时间</th>
+								<th scope="col">更新时间</th>
+								<th scope="col">操作</th>
+							</tr>
+						</thead>
+						<tbody id="search-res">
+	
+						</tbody>
+					</table>
+				</div>
+			</div>
+			<br>
+			<div class="container-fluid" style="max-width:2000px">
+				<h4>最近添加的网站</h4>
+				<br>
+				<div>
+					<table class="table table-striped">
+						<thead id="latestDomain">
+							<tr>
+								<th scope="col">域名</th>
+								<th scope="col">描述</th>
+								<th scope="col">IPv4地址</th>
+								<th scope="col">V4 http</th>
+								<th scope="col">V4 https</th>
+								<th scope="col">V4 h2</th>
+								<th scope="col">IPv6地址</th>
+								<th scope="col">V6 http</th>
+								<th scope="col">V6 https</th>
+								<th scope="col">V6 h2</th>
+								<th scope="col">添加时间</th>
+								<th scope="col">更新时间</th>
+								<th scope="col">操作</th>
+							</tr>
+						</thead>
+						<tbody>
+							{{range $k,$v := .latestDomain}}
+								<tr>
+									<td>{{$v.Domain}}</td>
+									<td>{{$v.Desc}}</td>
+									<td>{{$v.IPv4}}</td>
+									<td> {{if eq $v.V4hp 2}}<button type="button" class="btn btn-outline-success btn-sm">已支持</button>{{else}}<button type="button" class="btn btn-outline-danger btn-sm">不支持</button>{{end}}</td>
+									<td>{{checkCertificate $v 4}}</td>
+									<td> {{if eq $v.V4h2 2}}<button type="button" class="btn btn-outline-success btn-sm">已支持</button>{{else}}<button type="button" class="btn btn-outline-danger btn-sm">不支持</button>{{end}}</td>
+									<td>{{viewIPv6 $v.IPv6}}</td>
+									<td> {{if eq $v.V6hp 2}}<button type="button" class="btn btn-outline-success btn-sm">已支持</button>{{else}}<button type="button" class="btn btn-outline-danger btn-sm">不支持</button>{{end}}</td>
+									<td>{{checkCertificate $v 6}}</td>
+									<td> {{if eq $v.V6h2 2}}<button type="button" class="btn btn-outline-success btn-sm">已支持</button>{{else}}<button type="button" class="btn btn-outline-danger btn-sm">不支持</button>{{end}}</td>
+									<td>{{$v.Created.Format "2006-01-02 15:04"}}</td>
+									<td>{{$v.Updated.Format "2006-01-02 15:04"}}</td>
+									<td><a href="javascript:renewal({{$v.ID}})">更新</a></td>
+								</tr>
+							{{end}}
+						</tbody>
+						<script>
+							var renewal = function(id){
+								$.get("/renewal?id="+id,function(d){
+									if(d.ret == "v"){
+										alert("已加入列队,预计1分钟内处理完毕")
+									}
+								},"json")
+							}
+						</script>
+					</table>
+				</div>
+			</div>
+			<br>
+			<div class="container-fluid" style="max-width:2000px">
+				<h4>最近支持v6的网站</h4>
+				<br>
+				<div>
+					<table class="table table-striped">
+						<thead id="latestSupportV6">
+							<tr>
+								<th scope="col">域名</th>
+								<th scope="col">描述</th>
+								<th scope="col">IPv4地址</th>
+								<th scope="col">V4 http</th>
+								<th scope="col">V4 https</th>
+								<th scope="col">V4 h2</th>
+								<th scope="col">IPv6地址</th>
+								<th scope="col">V6 http</th>
+								<th scope="col">V6 https</th>
+								<th scope="col">V6 h2</th>
+								<th scope="col">添加时间</th>
+								<th scope="col">更新时间</th>
+								<th scope="col">操作</th>
+							</tr>
+						</thead>
+						<tbody id="JustSupport">
+							{{range $k,$v := .latestSupportV6}}
+							<tr>
+								<td class="align-middle">{{$v.Domain}}</td>
+								<td class="align-middle">{{$v.Desc}}</td>
+								<td class="align-middle">{{$v.IPv4}}</td>
+								<td> {{if eq $v.V4hp 2}}<button type="button" class="btn btn-outline-success btn-sm">已支持</button>{{else}}<button type="button" class="btn btn-outline-danger btn-sm">不支持</button>{{end}}</td>
+								<td>{{checkCertificate $v 4}}</td>
+								<td> {{if eq $v.V4h2 2}}<button type="button" class="btn btn-outline-success btn-sm">已支持</button>{{else}}<button type="button" class="btn btn-outline-danger btn-sm">不支持</button>{{end}}</td>
+								<td class="align-middle">{{viewIPv6 $v.IPv6}}</td>
+								<td> {{if eq $v.V6hp 2}}<button type="button" class="btn btn-outline-success btn-sm">已支持</button>{{else}}<button type="button" class="btn btn-outline-danger btn-sm">不支持</button>{{end}}</td>
+								<td>{{checkCertificate $v 6}}</td>
+								<td> {{if eq $v.V6h2 2}}<button type="button" class="btn btn-outline-success btn-sm">已支持</button>{{else}}<button type="button" class="btn btn-outline-danger btn-sm">不支持</button>{{end}}</td>
+								<td class="align-middle">{{$v.Created.Format "2006-01-02 15:04"}}</td>
+								<td class="align-middle">{{$v.Updated.Format "2006-01-02 15:04"}}</td>
+								<td><a href="javascript:renewal({{$v.ID}})">更新</a></td>
+							</tr>
+							{{end}}
+						</tbody>
+					</table>
+					<p class="mb-3 mr-4 text-muted text-right"><a href="javascript:more()" id="more" data-val="fuck" sytle="text-decoration:line-through;">查看更多</a></p>
+					<script>
+						var n = 1;
+						var more = function(t){
+							n +=1
+							$.get("/justSupport?n="+n,function(d){
+								$("#JustSupport").append(d)
+								$('[data-toggle="tooltip"]').tooltip()
+							})
+							if (n > 4){
+								$("#more").hide();
+							}
+						}
+					</script>
+				</div>
+			</div>
+			<br>
+			<div class="container-fluid" style="max-width:2000px">
+				<h4>证书即将过期的域名</h4>
+				<br>
+				<div>
+					<table class="table table-striped">
+						<thead id="willExpireHead">
+							<tr>
+								<th scope="col">域名</th>
+								<th scope="col">描述</th>
+								<th scope="col">证书过期时间</th>
+								<th scope="col">IPv4地址</th>
+								<th scope="col">V4 http</th>
+								<th scope="col">V4 https</th>
+								<th scope="col">V4 h2</th>
+								<th scope="col">IPv6地址</th>
+								<th scope="col">V6 http</th>
+								<th scope="col">V6 https</th>
+								<th scope="col">V6 h2</th>
+								<th scope="col">添加时间</th>
+								<th scope="col">操作</th>
+							</tr>
+						</thead>
+						<tbody id="willExpire">
+							{{range $k,$v := .willExpire}}
+							<tr>
+								<td class="align-middle">{{$v.Domain}}</td>
+								<td class="align-middle">{{$v.Desc}}</td>
+								<td class="align-middle">{{$v.CETime.Format "2006-01-02 15:04"}}</td>
+								<td class="align-middle">{{$v.IPv4}}</td>
+								<td> {{if eq $v.V4hp 2}}<button type="button" class="btn btn-outline-success btn-sm">已支持</button>{{else}}<button type="button" class="btn btn-outline-danger btn-sm">不支持</button>{{end}}</td>
+								<td>{{checkCertificate $v 4}}</td>
+								<td> {{if eq $v.V4h2 2}}<button type="button" class="btn btn-outline-success btn-sm">已支持</button>{{else}}<button type="button" class="btn btn-outline-danger btn-sm">不支持</button>{{end}}</td>
+								<td class="align-middle">{{viewIPv6 $v.IPv6}}</td>
+								<td> {{if eq $v.V6hp 2}}<button type="button" class="btn btn-outline-success btn-sm">已支持</button>{{else}}<button type="button" class="btn btn-outline-danger btn-sm">不支持</button>{{end}}</td>
+								<td>{{checkCertificate $v 6}}</td>
+								<td> {{if eq $v.V6h2 2}}<button type="button" class="btn btn-outline-success btn-sm">已支持</button>{{else}}<button type="button" class="btn btn-outline-danger btn-sm">不支持</button>{{end}}</td>
+								<td class="align-middle">{{$v.Created.Format "2006-01-02 15:04"}}</td>
+								<td><a href="javascript:renewal({{$v.ID}})">更新</a></td>
+							</tr>
+							{{end}}
+						</tbody>
+					</table>
+				</div>
+			</div>
+			<div class="container-fluid" style="max-width:2000px">
+				<h4>中国高校ipv6支持率（按地区）</h4>
+				<br>
+				<div>
+					<table class="table table-hover">
+						<thead id="universityHead">
+							<tr class="thead-light">
+								<th data-key="area" scope="col">区域</th>
+								<th data-key="count" data-way="2" scope="col">高校数量<i><?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "https://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="icon" width="13px" height="13px" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M158.5047493 423.62618732l353.4952507-353.49525069 353.4952507 353.49525069z m0 176.74762536l353.4952507 353.49525069 353.4952507-353.49525069z" fill="#707070" /></svg></i></th>
+								<th data-key="supportIpv6Count" data-way="2" scope="col">IPv6数量<i><?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "https://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="icon" width="13px" height="13px" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M158.5047493 423.62618732l353.4952507-353.49525069 353.4952507 353.49525069z m0 176.74762536l353.4952507 353.49525069 353.4952507-353.49525069z" fill="#707070" /></svg></i></th>
+								<th data-key="supportIpv6Scale" data-way="2"  scope="col">IPv6比例<i><?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "https://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="icon" width="13px" height="13px" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M158.5047493 423.62618732l353.4952507-353.49525069 353.4952507 353.49525069z m0 176.74762536l353.4952507 353.49525069 353.4952507-353.49525069z" fill="#707070" /></svg></i></th>
+								<th data-key="supportIpv6HttpCount" data-way="2" scope="col">IPv6 http数量<i><?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "https://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="icon" width="13px" height="13px" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M158.5047493 423.62618732l353.4952507-353.49525069 353.4952507 353.49525069z m0 176.74762536l353.4952507 353.49525069 353.4952507-353.49525069z" fill="#707070" /></svg></i></th>
+								<th data-key="supportIpv6HttpScale" data-way="2" scope="col">IPv6 http比例<i><?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "https://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="icon" width="13px" height="13px" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M158.5047493 423.62618732l353.4952507-353.49525069 353.4952507 353.49525069z m0 176.74762536l353.4952507 353.49525069 353.4952507-353.49525069z" fill="#707070" /></svg></i></th>
+								<th data-key="supportIpv6HttpsCount" data-way="2" scope="col">IPv6 https数量<i><?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "https://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="icon" width="13px" height="13px" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M158.5047493 423.62618732l353.4952507-353.49525069 353.4952507 353.49525069z m0 176.74762536l353.4952507 353.49525069 353.4952507-353.49525069z" fill="#707070" /></svg></i></th>
+								<th data-key="supportIpv6HttpsScale" data-way="2" scope="col">IPv6 https比例<i><?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "https://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="icon" width="13px" height="13px" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M158.5047493 423.62618732l353.4952507-353.49525069 353.4952507 353.49525069z m0 176.74762536l353.4952507 353.49525069 353.4952507-353.49525069z" fill="#707070" /></svg></i></th>
+								<th data-key="supportIpv6Http2Count" data-way="2" scope="col">IPv6 h2数量<i><?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "https://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="icon" width="13px" height="13px" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M158.5047493 423.62618732l353.4952507-353.49525069 353.4952507 353.49525069z m0 176.74762536l353.4952507 353.49525069 353.4952507-353.49525069z" fill="#707070" /></svg></i></th>
+								<th data-key="supportIpv6Http2Scale" data-way="2" scope="col">IPv6 h2比例<i><?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "https://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg class="icon" width="13px" height="13px" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M158.5047493 423.62618732l353.4952507-353.49525069 353.4952507 353.49525069z m0 176.74762536l353.4952507 353.49525069 353.4952507-353.49525069z" fill="#707070" /></svg></i></th>
+							</tr>
+						</thead>
+						<tbody id="universityBody">
+							<tr class="table-success">
+								<td>全部</td>
+								<td>{{.universityStat.count}}</td>
+								<td>{{.universityStat.supportIpv6Count}}</td>
+								<td>{{.universityStat.supportIpv6Scale}}%</td>
+								<td>{{.universityStat.supportIpv6HttpCount}}</td>
+								<td>{{.universityStat.supportIpv6HttpScale}}%</td>
+								<td>{{.universityStat.supportIpv6HttpsCount}}</td>
+								<td>{{.universityStat.supportIpv6HttpsScale}}%</td>
+								<td>{{.universityStat.supportIpv6Http2Count}}</td>
+								<td>{{.universityStat.supportIpv6Http2Scale}}%</td>
+							</tr>
+							{{range $k,$v := .universityClassify}}
+								<tr data-val="{{$k}}" class="university">
+									{{universityCount $k $v}}
+								</tr>
+							{{end}}
+						</tbody>
+					</table>
+					<script>
+						var loadCity = function(){
+							var citys = Array();
+							$(".classify").click(function(){
+								var city = $(this).attr("data-city")
+								if(citys[city] == 1){
+									$(".tag-"+city).toggle()
+									return
+								}
+								citys[city] = 1
+								var dd = "";
+								$.ajaxSettings.async = false;
+								$.get("/cityuniversitydetail?city="+city,function(d){
+									dd = d
+								})
+								$.ajaxSettings.async = true;
+								$(this).parent().after(dd)
+								$("#universityAreaCopy").html($(".universityArea:eq(0) thead").html());
+								var w = $("#universityHead tr:eq(0) th:eq(0)").width()+36
+								$("#universityAreaCopy").parent().css("margin-left",w)
+								$("#universityAreaCopy").parent().width($("#universityHeadCopy").parent().width()-w-12)
+								$('[data-toggle="tooltip"]').tooltip()
+							})
+						}
+				
+						//排序
+						$(window).scroll(function(){
+							if($(document).scrollTop() > $("#universityHead").offset().top){
+								if($(document).scrollTop() > $("#universityHead").offset().top+$("#universityHead").parent().height()){
+									$("#universityHeadCopy").hide()
+								}else{
+									$("#universityHeadCopy").show()
+									var ul = $("#universityHead tr").children("th");
+									for(var i = 0; i< ul.length;i++){
+										$("#universityHeadCopy tr th").eq(i).width($(ul[i]).width());
+									}
+								}
+							}else{
+								$("#universityHeadCopy").hide()
+							}
+							if($(".universityArea").length>0){
+								$("#universityAreaCopy").hide()
+								for(var i=0;i< $(".universityArea").length;i++){
+									if ($(".universityArea").eq(i).offset().top < $(document).scrollTop()+50){
+										if($(".universityArea").eq(i).height()+$(".universityArea").eq(i).offset().top> $(document).scrollTop()+50){
+											$("#universityAreaCopy").show()
+											var ul = $(".universityArea:eq("+i+") tr:eq(0)").children("th");
+											for(var ci = 0; ci< ul.length; ci++){
+												$("#universityAreaCopy tr th").eq(ci).width($(ul[ci]).width());
+											}
+										}
+									}
+								}
+							}
+							if($(document).scrollTop() > $("#latestSupportV6").offset().top){
+								if($(document).scrollTop() > $("#latestSupportV6").offset().top+$("#latestSupportV6").parent().height()){
+									$("#latestSupportV6Copy").hide()
+									
+								}else{
+									$("#latestSupportV6Copy").show()
+									var ul = $("#latestSupportV6 tr").children("th");
+									for(var i = 0; i< ul.length;i++){
+										$("#latestSupportV6Copy tr th").eq(i).width($(ul[i]).width());
+									}
+								}
+							}else{
+								$("#latestSupportV6Copy").hide()
+							}
+							if($(document).scrollTop() > $("#willExpireHead").offset().top){
+								if($(document).scrollTop() > $("#willExpireHead").offset().top+$("#willExpireHead").parent().height()){
+									$("#willExpireHeadCopy").hide()
+									return
+								}else{
+									$("#willExpireHeadCopy").show()
+									var ul = $("#willExpireHead tr").children("th");
+									for(var i = 0; i< ul.length;i++){
+										$("#willExpireHeadCopy tr th").eq(i).width($(ul[i]).width());
+									}
+								}
+							}else{
+								$("#willExpireHeadCopy").hide()
+							}
+							if($(document).scrollTop() > $("#latestDomain").offset().top){
+								if($(document).scrollTop() > $("#latestDomain").offset().top+$("#latestDomain").parent().height()){
+									$("#latestDomainCopy").hide()
+									return
+								}
+								$("#latestDomainCopy").show()
+								var ul = $("#latestDomain tr").children("th");
+								for(var i = 0; i< ul.length;i++){
+									$("#latestDomainCopy tr th").eq(i).width($(ul[i]).width());
+								}
+							}else{
+								$("#latestDomainCopy").hide()
+							}
+							if($(document).scrollTop() > $("#searchHead").offset().top){
+								if($(document).scrollTop() > $("#searchHead").offset().top+$("#searchHead").parent().height()){
+									$("#searchHeadCopy").hide()
+									return
+								}
+								$("#searchHeadCopy").show()
+								var ul = $("#searchHead tr").children("th");
+								for(var i = 0; i< ul.length;i++){
+									$("#searchHeadCopy tr th").eq(i).width($(ul[i]).width());
+								}
+							}else{
+								$("#searchHeadCopy").hide()
+							}
+						})
+						loadCity();
+					</script>
+				</div>
+			</div>
+			<div class="container" style="max-width:2000px;position:fixed;top:0;left:0;right:0;margin-left:auto;margin-right:auto;">
+				<table class="table table-hover" style="margin-bottom:0">
+					<thead id="latestDomainCopy" style="background:#ccc;display: none;">
+						<tr>
+						</tr>
+					</thead>
+					<thead id="searchHeadCopy" style="background:#ccc;display: none;">
+						<tr>
+						</tr>
+					</thead>
+					<thead id="latestSupportV6Copy" style="background:#ccc;display: none;">
+						<tr>
+						<tr>
+					</thead>
+					<thead id="universityHeadCopy" style="background:#ccc;display: none;">
+						<tr>
+						</tr>
+					</thead>
+					<thead id="willExpireHeadCopy" style="background:#ccc;display: none;">
+						<tr>
+						</tr>
+					</thead>
+				</table>
+				<table class="table table-hover">
+					<thead id="universityAreaCopy" style="background:#ccc;display: none;">
+						<tr>
+						</tr>
+					</thead>
+				</table>
+				<script>
+					$(function(){
+						$("#latestDomainCopy").html($("#latestDomain").html());
+						$("#searchHeadCopy").html($("#searchHead").html());
+						$("#universityHeadCopy").html($("#universityHead").html());
+						$("#willExpireHeadCopy").html($("#willExpireHead").html())
+						$("#latestSupportV6Copy").html($("#latestSupportV6").html());
+						$("#universityHead tr th,#universityHeadCopy tr th").click(function(){
+							var key = $(this).attr("data-key")
+							if(key == "area"){
+								retuan
+							}
+							$("#universityAreaCopy").hide()
+							$(".cityUniversityDetails").remove()
+							var way = $(this).attr("data-way")
+							var lists = new Map();
+							for(var i = 0; i < $("#universityBody .university").length; i++){
+								var uul = $("#universityBody .university").eq(i).children("td")
+								for(var ii = 0; ii<uul.length; ii++){
+									if(key == $("#universityBody .university").eq(i).children("td").eq(ii).attr("data-val")){
+										var data_val = $("#universityBody .university:eq("+i+")").attr("data-val")
+										var skey = $("#universityBody .university").eq(i).children("td").eq(ii).html()
+										if(lists.has(skey)){
+											lists.set(skey,"<tr data-val="+data_val+" class='align-middle university'>"+$("#universityBody .university").eq(i).html()+"</tr>"+lists.get(skey));
+										}else{
+											lists.set(skey,"<tr data-val="+data_val+" class='align-middle university'>"+$("#universityBody .university").eq(i).html()+"</tr>");
+										}
+									}
+								}
+							}
+							$("#universityBody .university").remove()
+							var key_s = new Map();
+							var kkkk = Array();
+							for (var [key, value] of lists) {
+								var fk = parseInt(key)
+								if(isNaN(fk)){
+									fk = key
+								}
+								kkkk.push(fk)
+								key_s.set(fk,key)
+							}
+							function sequence(a,b){
+							    return a - b;
+							}
+							if(way == "1"){
+								kkkk.sort(function(a,b){
+									return a-b;
+								})
+								$(this).attr("data-way",2)
+							}else{
+								kkkk.sort(function(a,b){
+									return b-a;
+								})
+								$(this).attr("data-way",1)
+							} 
+							kkkk.forEach(function(k){
+								$("#universityBody").append(lists.get(key_s.get(k)))
+							})
+							loadCity()
+							$('[data-toggle="tooltip"]').tooltip();   
+						})
+					})
+				</script>
+			</div>
+			<script>
+				$(function(){
+					$('[data-toggle="tooltip"]').tooltip();   
+				})
+			</script>
+			<footer>
+				<div class="container">
+					<br>
+					<br>
+					<center>
+				© 2013 - 2019 北京天特信科技有限公司 所有权利保留
+					</center>
+					<br>
+					<br>
+				</div>
+			</footer>
+		</body>
+		<script src="https://cdn.ipip.net/loveapp/ipip/www_v2/theme/js/popper.min.js"></script>
+		<script src="https://cdn.bootcss.com/twitter-bootstrap/4.2.1/js/bootstrap.min.js"></script>
+	</html>

@@ -1,0 +1,21 @@
+mysql:
+    image: "mysql:8.0"
+    ports:
+      - "3306:3306"
+    container_name: "mysql"
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+      - ./mysql.cnf:/etc/mysql/my.cnf
+      - ./mysql/logs:/logs
+    environment:
+      - MYSQL_ROOT_PASSWORD=qwerty
+
+phpmyadmin:
+    image: "phpmyadmin/phpmyadmin"
+    ports:
+      - "8080:80"
+    restart: "always"
+    links:
+      - "mysql"
+    environment:
+      - PMA_ARBITRARY=1
