@@ -156,7 +156,7 @@ func main() {
 	m := autocert.Manager{
 		Cache:      autocert.DirCache(".letsencrypt"),
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist("v6sc.ipip.net."),
+		HostPolicy: autocert.HostWhitelist("v6sc.ipip.net"),
 		Email:      "zhangyuan@newyou.ltd",
 	}
 	go http.ListenAndServe(":80", m.HTTPHandler(nil))
