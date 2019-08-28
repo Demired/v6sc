@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/robfig/cron"
 	"github.com/urfave/negroni"
 	"github.com/xormplus/xorm"
 	"golang.org/x/crypto/acme/autocert"
@@ -33,6 +34,7 @@ var (
 	logWarn       *log.Logger
 	logError      *log.Logger
 	db            *xorm.Engine
+	scRefresh     = kingpin.Flag("refresh", "refresh program").Bool()
 	maxRoutineNum = kingpin.Flag("maxRoutineNum", "refresh status routine num").Default("10").Int()
 	port          = kingpin.Flag("port", "listen http port").Short('p').String()
 	scLogDir      = kingpin.Flag("log-dir", "log file path").Default("log").ExistingDir()
@@ -132,11 +134,30 @@ func main() {
 	httpLog.ALogger = log.New(io.MultiWriter(os.Stdout, logFile), "[https] ", 0)
 	httpLog.SetFormat("{{.StartTime}} {{.Hostname}} {{.Duration}} [{{.Method}} {{.Request.Proto}} {{.Status}} {{.Path}}] {{.Request.RemoteAddr}} {{.Request.UserAgent}}")
 
+	if *scRefresh {
+		refresh()
+		taskRecordT := time.NewTicker(time.Second * 10)
+		for _ = range taskRecordT.C {
+			fmt.Println(len(task))
+			if len(task) == 0 {
+				break
+			}
+		}
+		os.Exit(0)
+	}
+
+	go func() {
+		c := cron.New()
+		c.AddFunc("0 0 3 * * *", func() {
+			refresh()
+		})
+		c.Start()
+	}()
 	mux := httprouter.New()
-	// mux.PanicHandler = func(w http.ResponseWriter, r *http.Request, v interface{}) {
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	logError.Println(v)
-	// }
+	mux.PanicHandler = func(w http.ResponseWriter, r *http.Request, v interface{}) {
+		w.WriteHeader(http.StatusInternalServerError)
+		logError.Println(v)
+	}
 	mux.GET("/", indexHTML)
 	mux.GET("/renewal", renewal)
 	mux.GET("/index", indexHTML)
@@ -167,6 +188,18 @@ func main() {
 		TLSConfig:      &tls.Config{GetCertificate: m.GetCertificate},
 	}
 	ss.ListenAndServeTLS("", "")
+}
+
+func refresh() {
+	log.Printf("refresh start\n")
+	var sites []Site
+	if err := db.Desc("ID").Find(&sites); err != nil {
+		panic(err)
+	}
+	for _, site := range sites {
+		task <- 1
+		go checkDomain(site)
+	}
 }
 
 func justSupport(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
